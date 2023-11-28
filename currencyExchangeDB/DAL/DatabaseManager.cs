@@ -305,7 +305,7 @@ namespace currencyExchangeDB.DAL
             }
         }
 
-        public CurrencyRate GetCurrencyRateByCurrencyCodes(int fromCurrencyId, int toCurrencyId)
+        public CurrencyRate GetCurrencyRateByCurrencyIDs(int fromCurrencyId, int toCurrencyId)
         {
             try
             {

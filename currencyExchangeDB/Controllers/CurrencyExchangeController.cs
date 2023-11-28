@@ -35,6 +35,8 @@ namespace currencyExchangeDB.Controllers
 {
     public class CurrencyExchangeController
     {
+
+
         private readonly DatabaseManager _databaseManager;
         private bool _exitRequested;
 
@@ -46,6 +48,9 @@ namespace currencyExchangeDB.Controllers
 
         public void Start()
         {
+           Console.OutputEncoding = Encoding.Unicode;
+           Console.InputEncoding = Encoding.Unicode;
+
             while (!_exitRequested)
             {
                 try
@@ -67,7 +72,7 @@ namespace currencyExchangeDB.Controllers
             Console.WriteLine("2. Управление кассирами (Добавить/Удалить)");
             Console.WriteLine("3. Управление транзакциями (Провести/Удалить историю)");
             Console.WriteLine("4. Управление списком валют (Добавить/Удалить)");
-            Console.WriteLine("5. Управление валютным курсом (Обновление курса)");
+            Console.WriteLine("5. Управление валютным курсом (Обновить/Добавить/Удалить)");
             Console.WriteLine("0. Выйти");
 
             int choice;
@@ -292,8 +297,8 @@ namespace currencyExchangeDB.Controllers
         {
             try
             {
-                string clientFirstName = UtilityFunctions.PromptValidInput<string>("Введите имя клиента:", UtilityFunctions.IsValidName);
-                string clientLastName = UtilityFunctions.PromptValidInput<string>("Введите фамилию клиента:", UtilityFunctions.IsValidName);
+                string clientFirstName = UtilityFunctions.PromptValidInput("Введите имя клиента:", UtilityFunctions.IsValidName);
+                string clientLastName = UtilityFunctions.PromptValidInput("Введите фамилию клиента:", UtilityFunctions.IsValidName);
                 int g = -1;
                 Console.WriteLine("Введите пол клиента 1-3, 1-Мужской/Male, 2-Женский/Female, 3-Другой/Other");
                 while (!int.TryParse(Console.ReadLine(), out g) || g < 1 || g > 3)
@@ -327,9 +332,9 @@ namespace currencyExchangeDB.Controllers
 
                 }
 
-                string clientMail = UtilityFunctions.PromptValidInput<string>("Введите электронную почту клиента:", UtilityFunctions.IsValidEmail);
-                string clientPassportNumber = UtilityFunctions.PromptValidInput<string>("Введите паспорт в формате: XXXX-XXXXXX", UtilityFunctions.IsValidPassportNumber);
-                string clientPhoneNumber = UtilityFunctions.PromptValidInput<string>("Введите номер телефона в формате: X-XXX-XXX-XX-XX", UtilityFunctions.IsValidPhoneNumber);
+                string clientMail = UtilityFunctions.PromptValidInput("Введите электронную почту клиента:", UtilityFunctions.IsValidEmail);
+                string clientPassportNumber = UtilityFunctions.PromptValidInput("Введите паспорт в формате: XXXX XXXXXX", UtilityFunctions.IsValidPassportNumber);
+                string clientPhoneNumber = UtilityFunctions.PromptValidInput("Введите номер телефона в формате: X-XXX-XXX-XX-XX", UtilityFunctions.IsValidPhoneNumber);
                 var client = new Client
                 {
                     firstName = clientFirstName,
@@ -355,10 +360,15 @@ namespace currencyExchangeDB.Controllers
         {
             try
             {
+                if (_databaseManager.GetAllClients().Count == 0)
+                {
+                    Console.WriteLine("В списке нет клиентов.");
+                    return;
+                }
                 Console.WriteLine("Список клиентов:");
                 foreach (var client in _databaseManager.GetAllClients())
                 {
-                    Console.WriteLine($"ID: {client.ClientId}, Фамилия/Имя: {client.lastName} {client.passportNumber}");
+                    Console.WriteLine($"ID: {client.ClientId}, Фамилия/Имя: {client.lastName} {client.firstName}");
                 }
 
                 Console.WriteLine("Введите ID клиента для удаления:");
@@ -384,6 +394,11 @@ namespace currencyExchangeDB.Controllers
         {
             try
             {
+                if (_databaseManager.GetAllClients().Count == 0)
+                {
+                    Console.WriteLine("В списке нет клиентов.");
+                    return;
+                }     
                 Console.WriteLine("Список клиентов:");
                 foreach (var _client in _databaseManager.GetAllClients())
                 {
@@ -397,6 +412,11 @@ namespace currencyExchangeDB.Controllers
                     Console.WriteLine("Неверный ID. Пожалуйста, введите целое число.");
                 }
 
+                if (_databaseManager.GetAllCashiers().Count == 0)
+                {
+                    Console.WriteLine("В списке нет кассиров.");
+                    return;
+                }
                 Console.WriteLine("Список кассиров:");
                 foreach (var cashier in _databaseManager.GetAllCashiers())
                 {
@@ -410,6 +430,11 @@ namespace currencyExchangeDB.Controllers
                     Console.WriteLine("Неверный ID. Пожалуйста, введите целое число.");
                 }
 
+                if (_databaseManager.GetAllCurrencies().Count == 0)
+                {
+                    Console.WriteLine("В списке нет доступных валют.");
+                    return;
+                }
                 Console.WriteLine("Список доступных к обмену валют:");
                 foreach (var currency in _databaseManager.GetAllCurrencies())
                 {
@@ -424,19 +449,28 @@ namespace currencyExchangeDB.Controllers
                 }
                 Console.WriteLine("Введите ID покупаемой валюты для совершения транзакции:");
                 int toCurrencyId;
-                while (!int.TryParse(Console.ReadLine(), out toCurrencyId) && (toCurrencyId != fromCurrencyId))
+                while (!int.TryParse(Console.ReadLine(), out toCurrencyId) || (toCurrencyId == fromCurrencyId))
                 {
                     Console.WriteLine("Неверный ID. Пожалуйста, введите целое число, не совпадающее с ID продаваемой валюты");
                 }
-
-                CurrencyRate currencyRateEntity = _databaseManager.GetCurrencyRateByCurrencyCodes(fromCurrencyId, toCurrencyId);
+                
+                CurrencyRate currencyRateEntity = _databaseManager.GetCurrencyRateByCurrencyIDs(fromCurrencyId, toCurrencyId);
                 if(currencyRateEntity != null) {
+                    bool reversed = false;
                     double? currencyRate;
                     if (currencyRateEntity.fromCurrencyId == fromCurrencyId)
                         currencyRate = currencyRateEntity.currencyRate;
-                    else currencyRate = 1 / (currencyRateEntity.currencyRate);
+                    else {
+                        currencyRate = 1 / (currencyRateEntity.currencyRate);
+                        reversed = true;
+                    }
 
-                    double? currencyAmount = UtilityFunctions.PromptValidInput<double>("Введите кол-во единиц приобретаемой валюты:", UtilityFunctions.IsValidCurrencyAmount);
+                    Console.WriteLine("Введите кол-во единиц приобретаемой валюты:");
+                    double currencyAmount;
+                    while (!double.TryParse(Console.ReadLine(), out currencyAmount) || currencyAmount < 0)
+                    {
+                        Console.WriteLine("Неверное число валюты.");
+                    }
                     var _transaction = new Transaction
                     {
                         cashierId = cashierId,
@@ -449,6 +483,9 @@ namespace currencyExchangeDB.Controllers
 
                     };
                     _databaseManager.AddTransaction(_transaction);
+
+                    Console.WriteLine($"В результате транзакции клиент получил {currencyAmount} {_databaseManager.GetCurrencyById(toCurrencyId).currencyCode}" +
+                        $" в обмен на {currencyAmount / currencyRate} {_databaseManager.GetCurrencyById(fromCurrencyId).currencyCode}");
 
                     Console.WriteLine("Транзакция успешно проведена");
                 }
@@ -480,6 +517,11 @@ namespace currencyExchangeDB.Controllers
         {
             try
             {
+                if (_databaseManager.GetAllTransactions().Count == 0)
+                {
+                    Console.WriteLine("В списке нет транзакций.");
+                    return;
+                }
                 Console.WriteLine("Список транзакций:");
                 foreach (var transaction in _databaseManager.GetAllTransactions())
                 {
@@ -509,7 +551,7 @@ namespace currencyExchangeDB.Controllers
         {
             try
             {
-                string _currencyCode = UtilityFunctions.PromptValidInput<string>("Введите буквенный (3 буквы) код валюты стандарта ISO 4217:", UtilityFunctions.IsValidCurrencyCode);
+                string _currencyCode = UtilityFunctions.PromptValidInput("Введите буквенный (3 буквы) код валюты стандарта ISO 4217:", UtilityFunctions.IsValidCurrencyCode);
 
                 Currency currencyEntity = _databaseManager.GetCurrencyByCode(_currencyCode);
                 if(currencyEntity != null) {
@@ -517,7 +559,7 @@ namespace currencyExchangeDB.Controllers
                 }
                 else
                 {
-                    string _currencyName = UtilityFunctions.PromptValidInput<string>("Введите оффициальное название валюты:", UtilityFunctions.IsValidCurrencyName);
+                    string _currencyName = UtilityFunctions.PromptValidInput("Введите оффициальное название валюты:", UtilityFunctions.IsValidCurrencyName);
                     var currency = new Currency
                     {
                         currencyCode = _currencyCode,
@@ -539,6 +581,11 @@ namespace currencyExchangeDB.Controllers
         {
             try
             {
+                if (_databaseManager.GetAllCurrencies().Count == 0)
+                {
+                    Console.WriteLine("В списке нет доступных валют.");
+                    return;
+                }
                 Console.WriteLine("Список доступных валют:");
                 foreach (var currency in _databaseManager.GetAllCurrencies())
                 {
@@ -576,8 +623,8 @@ namespace currencyExchangeDB.Controllers
         {
             try
             {
-                string cashierFirstName = UtilityFunctions.PromptValidInput<string>("Введите имя кассира:", UtilityFunctions.IsValidName);
-                string cashierLastName = UtilityFunctions.PromptValidInput<string>("Введите фамилию кассира:", UtilityFunctions.IsValidName);
+                string cashierFirstName = UtilityFunctions.PromptValidInput("Введите имя кассира:", UtilityFunctions.IsValidName);
+                string cashierLastName = UtilityFunctions.PromptValidInput("Введите фамилию кассира:", UtilityFunctions.IsValidName);
                 int g = -1;
                 Console.WriteLine("Введите пол кассира 1-3, 1-Мужской/Male, 2-Женский/Female, 3-Другой/Other");
                 while (!int.TryParse(Console.ReadLine(), out g) || g < 1 || g > 3)
@@ -619,8 +666,8 @@ namespace currencyExchangeDB.Controllers
                     Console.WriteLine("Некорректный ввод. Пожалуйста, введите корректную дату приёма кассира на работу в формате dd.MM.yyyy.");
                 }
 
-                string cashierMail = UtilityFunctions.PromptValidInput<string>("Введите электронную почту кассира:", UtilityFunctions.IsValidEmail);
-                string cashierPhoneNumber = UtilityFunctions.PromptValidInput<string>("Введите номер телефона в формате: X-XXX-XXX-XX-XX", UtilityFunctions.IsValidPhoneNumber);
+                string cashierMail = UtilityFunctions.PromptValidInput("Введите электронную почту кассира:", UtilityFunctions.IsValidEmail);
+                string cashierPhoneNumber = UtilityFunctions.PromptValidInput("Введите номер телефона в формате: X-XXX-XXX-XX-XX", UtilityFunctions.IsValidPhoneNumber);
                 var cashier = new Cashier
                 {
                     firstName = cashierFirstName,
@@ -646,6 +693,11 @@ namespace currencyExchangeDB.Controllers
         {
             try
             {
+                if (_databaseManager.GetAllCashiers().Count == 0)
+                {
+                    Console.WriteLine("В списке нет кассиров.");
+                    return;
+                }
                 Console.WriteLine("Список кассиров:");
                 foreach (var cashier in _databaseManager.GetAllCashiers())
                 {
@@ -740,6 +792,11 @@ namespace currencyExchangeDB.Controllers
         {
             try
             {
+                if (_databaseManager.GetAllCurrencies().Count == 0)
+                {
+                    Console.WriteLine("В списке нет доступных валют.");
+                    return;
+                }
                 Console.WriteLine("Список доступных валют:");
                 foreach (var currency in _databaseManager.GetAllCurrencies())
                 {
@@ -781,7 +838,13 @@ namespace currencyExchangeDB.Controllers
                                     || currencyRateEntity.fromCurrencyId == currencySecondId && currencyRateEntity.toCurrencyId == currencyId)
                                 {
                                     Console.WriteLine($"Курс найден: {_databaseManager.GetCurrencyById(currencyRateEntity.fromCurrencyId).currencyCode} -> {_databaseManager.GetCurrencyById(currencyRateEntity.toCurrencyId).currencyCode} Коэффициент: {currencyRateEntity.currencyRate} ");
-                                    double newCurrencyRate = UtilityFunctions.PromptValidInput<double>("Введите новый коэффициент для курса:", UtilityFunctions.IsValidCurrencyAmount);
+
+                                    Console.WriteLine("Введите новый валютный курс:");
+                                    double newCurrencyRate;
+                                    while (!double.TryParse(Console.ReadLine(), out newCurrencyRate) || newCurrencyRate < 0)
+                                    {
+                                        Console.WriteLine("Неверный ввод валютного курса.");
+                                    }
                                     _databaseManager.UpdateCurrencyRate(currencyRateEntity.CurrencyRateId, newCurrencyRate);
                                 }
                             }
@@ -808,10 +871,14 @@ namespace currencyExchangeDB.Controllers
                             {
                                 if (currencyRateEntity.fromCurrencyId == currencyId && currencyRateEntity.toCurrencyId == currencyId)
                                 {
-                                    Console.WriteLine("Курс найден: ", _databaseManager.GetCurrencyById(currencyRateEntity.fromCurrencyId).currencyCode, "->", _databaseManager.GetCurrencyById(currencyRateEntity.toCurrencyId).currencyCode, "Коэффициент: ",
-                                        currencyRateEntity.currencyRate);
-                                    double? newCurrencyRate = UtilityFunctions.PromptValidInput<double>("Введите новый коэффициент для курса:", UtilityFunctions.IsValidCurrencyAmount);
-                                    currencyRateEntity.currencyRate = newCurrencyRate;
+                                    Console.WriteLine($"Курс найден: {_databaseManager.GetCurrencyById(currencyRateEntity.fromCurrencyId).currencyCode} -> {_databaseManager.GetCurrencyById(currencyRateEntity.toCurrencyId).currencyCode} Коэффициент: {currencyRateEntity.currencyRate} ");
+                                    Console.WriteLine("Введите новый валютный курс:");
+                                    double newCurrencyRate;
+                                    while (!double.TryParse(Console.ReadLine(), out newCurrencyRate) || newCurrencyRate < 0)
+                                    {
+                                        Console.WriteLine("Неверный ввод валютного курса.");
+                                    }
+                                    _databaseManager.UpdateCurrencyRate(currencyRateEntity.CurrencyRateId, newCurrencyRate);
                                 }
                             }
                             Console.WriteLine("Курс успешно обновлен!");
@@ -838,6 +905,11 @@ namespace currencyExchangeDB.Controllers
         {
             try
             {
+                if (_databaseManager.GetAllCurrencies().Count == 0)
+                {
+                    Console.WriteLine("В списке нет доступных валют.");
+                    return;
+                }
                 Console.WriteLine("Список доступных валют:");
                 foreach (var currency in _databaseManager.GetAllCurrencies())
                 {
@@ -872,7 +944,13 @@ namespace currencyExchangeDB.Controllers
                                 Console.WriteLine("Неверный ID. Пожалуйста, введите целое число.");
                             }
 
-                            double? newCurrencyRate = UtilityFunctions.PromptValidInput<double>("Введите новый коэффициент для курса:", UtilityFunctions.IsValidCurrencyAmount);
+                            Console.WriteLine("Введите новый валютный курс:");
+                            double newCurrencyRate;
+                            while (!double.TryParse(Console.ReadLine(), out newCurrencyRate) || newCurrencyRate < 0)
+                            {
+                                Console.WriteLine("Неверный ввод валютного курса.");
+                            }
+
                             var currencyRate = new CurrencyRate
                             {
                                 fromCurrencyId = currencyId,
@@ -907,6 +985,11 @@ namespace currencyExchangeDB.Controllers
         {
             try
             {
+                if (_databaseManager.GetAllCurrencies().Count == 0)
+                {
+                    Console.WriteLine("В списке нет доступных валют.");
+                    return;
+                }
                 Console.WriteLine("Список доступных валют:");
                 foreach (var currency in _databaseManager.GetAllCurrencies())
                 {
@@ -949,8 +1032,7 @@ namespace currencyExchangeDB.Controllers
                                 if (currencyRateEntity.fromCurrencyId == currencyId && currencyRateEntity.toCurrencyId == currencySecondId
                                     || currencyRateEntity.fromCurrencyId == currencySecondId && currencyRateEntity.toCurrencyId == currencyId)
                                 {
-                                    Console.WriteLine("Курс удалён: ", _databaseManager.GetCurrencyById(currencyRateEntity.fromCurrencyId).currencyCode, "->", _databaseManager.GetCurrencyById(currencyRateEntity.toCurrencyId).currencyCode, "Коэффициент: ",
-                                        currencyRateEntity.currencyRate);
+                                    Console.WriteLine($"Курс удалён: {_databaseManager.GetCurrencyById(currencyRateEntity.fromCurrencyId).currencyCode} -> {_databaseManager.GetCurrencyById(currencyRateEntity.toCurrencyId).currencyCode} Коэффициент: {currencyRateEntity.currencyRate} ");
                                     _databaseManager.DeleteCurrencyRate(currencyRateEntity.CurrencyRateId);
                                 }
                             }
@@ -978,8 +1060,7 @@ namespace currencyExchangeDB.Controllers
                             {
                                 if (currencyRateEntity.fromCurrencyId == currencyId || currencyRateEntity.toCurrencyId == currencyId)
                                 {
-                                    Console.WriteLine("Курс удалён: ", _databaseManager.GetCurrencyById(currencyRateEntity.fromCurrencyId).currencyCode, "->", _databaseManager.GetCurrencyById(currencyRateEntity.toCurrencyId).currencyCode, "Коэффициент: ",
-                                        currencyRateEntity.currencyRate);
+                                    Console.WriteLine($"Курс найден: {_databaseManager.GetCurrencyById(currencyRateEntity.fromCurrencyId).currencyCode} -> {_databaseManager.GetCurrencyById(currencyRateEntity.toCurrencyId).currencyCode} Коэффициент: {currencyRateEntity.currencyRate} ");
                                     _databaseManager.DeleteCurrencyRate(currencyRateEntity.CurrencyRateId);
                                 }
                             }

@@ -42,9 +42,9 @@ namespace currencyExchangeDB.DAL
             {
                 modelBuilder.Entity<Client>().HasData(
                     new Client { ClientId = 1, firstName = "Иван", lastName = "Иванов", email = "ivan34235@mail.com", 
-                        gender = "Мужчина/Male", passportNumber = "1234 567890", phoneNumber = "8-123-456-78-90" },
+                        gender = "Мужской/Male", passportNumber = "1234 567890", phoneNumber = "8-123-456-78-90" },
                     new Client { ClientId = 2, firstName = "Jane", lastName = "Doe", email = "jdoe335@gmail.com", 
-                        gender = "Женщина/Female", passportNumber = "0987 654321", phoneNumber = "8-987-654-32-10" }
+                        gender = "Женский/Female", passportNumber = "0987 654321", phoneNumber = "8-987-654-32-10" }
                 );
 
                 modelBuilder.Entity<Cashier>().HasData(
